@@ -1,6 +1,17 @@
+/*              FONTES              */
+@font-face{
+    font-family: Open Sans;
+    src: url(../fonts/OpenSans-Light.ttf);
+}
+
+/*----------------------------------*/
+
+
 body{
 	margin: 2%;
-	font-family: courier new;
+	font-family: 'Open Sans', sans-serif;
+    color: #0d0d0d;
+    font-size: 1.1em;
 }
 
 .logo{ 
@@ -10,15 +21,18 @@ body{
 }
 
 .code{
-	background-color: #f4f4f4;
+	background-color: #f6f6f6;
 	padding: 2%;
-	border-style: dotted
+	border-style: dotted;
 }
 
 .note{
-	background-color: #cbcbcb;
+    background-color: #006ed5;
+    color: white;
 	padding: 2%;
-	box-shadow: 2px 2px 2px 1px #9b9b9b;
+    margin-top: 4%;
+    margin-bottom: 4%;
+	box-shadow: 2px 2px 2px 1px #dcdcdc;
 }
 
 
@@ -44,3 +58,5 @@ body{
     color: #6D6D6D;
     border-bottom:3px solid black;
 }
+
+.DIV_TEXT{margin-top: 4%; margin-bottom: 3%;  border: 1px solid #e7e7e7;}

@@ -60,6 +60,7 @@ Não vamos se preocupar tanto com vaidade e sim como funciona todo o esquema des
 Este nível como dito acima não chega nem perto de um gerenciador de baixo nível seguro e utilizável em uma distribuição diária. Mas é totalmente funcional e é o pontapé inicial. Tenha uma boa diversão.
 </p>
 
+
 <!---------- TIPOS DE GERENCIADORES DE PACOTES  ---------->
 
 <h1 id="tipos-gerenciadores-de-pacotes">2. Tipos de gerenciadores de pacotes</h1>
@@ -80,8 +81,15 @@ O gerenciador de baixo nível é o coração do gerenciador. É ele que cria, in
 </ul>
 
 <p>
+Um fato que precisamos saber é que normalmente gerenciadores de baixo nível não resolvem as depêndencias dos softwares. Eles normalmente empregam uma técnica em algum arquivo para o próprio empacotador do software adicionar as dependências! E este arquivo é puxado pelo gerenciador de alto nível que se encarrega de listar as dependências e resolver as mesmas.
+</p>
+
+<p>
 Então quando você faz alguma função listada acima, você está utilizando o gerenciador de baixo nível!
 </p>
+
+<hr class="DIV_TEXT">
+
 
 <h2 id="alto-nivel">2.2 Alto nível</h2>
 <p>
@@ -93,6 +101,17 @@ O gerenciador de alto nível realiza a parte mais inteligente do gerenciamento, 
   <li>slackpkg (não resolve dependências)</li>
   <li>dnf/yum</li>
 </ul>
+
+<p>
+Devo salientar que normalmente os gerenciadores de alto nível são propensos a milhares de erros! Fazer algo inteligente é complicado. Você pede pra remover o D por exemplo, se o A, B e C depender do D e o Y depender do A e for removido jundo com o D, acaba quebrando tudo. Você acaba ficando sem os softwares dito acima :)
+</p>
+
+<p>
+O bom de se trabalhar com gerenciadores de alto nível é mais pela praticidade, mas precisa ser programado com muito cuidado.
+</p>
+
+<hr class="DIV_TEXT">
+
 
 <!---------- O QUE VAMOS APRENDER? ---------->
 <h1 id="iniciando">3. Iniciando</h1>
@@ -148,7 +167,7 @@ Primeiramente crie um diretório em /tmp/ chamado source é dentro deste diretó
 </p>
 
 <pre class="code">
-$ mkdir -vp /tmp/source/nano
+$ <b>mkdir</b> -vp /tmp/source/nano
 </pre>
 
 <p>
@@ -156,9 +175,9 @@ E adquira o fonte do editor <a href="https://www.nano-editor.org/download.php" t
 </p>
 
 <pre class="code">
-$ cd /tmp/source/nano
-$ wget https://www.nano-editor.org/dist/v4/nano-4.7.tar.xz
-$ tar xvf nano-4.7.tar.xz
+$ <b>cd</b> /tmp/source/nano
+$ <b>wget</b> https://www.nano-editor.org/dist/v4/nano-4.7.tar.xz
+$ <b>tar</b> xvf nano-4.7.tar.xz
 </pre>
 
 <p>
@@ -166,9 +185,9 @@ Após feito este processo vamos entrar dentro do diretório que foi criado, é l
 </p>
 
 <pre class="code">
-$ ls
+$ <b>ls</b>
 nano-4.7  nano-4.7.tar.xz
-$ cd nano-4-7
+$ <b>cd</b> nano-4-7
 </pre>
 
 <p>
@@ -187,11 +206,11 @@ Como o objetivo deste livro não é "como compilar um software" e sim "Como escr
 </div>
 
 <pre class="code">
-$ ./configure       \
---prefix=/usr       \
---sysconfdir=/etc   \
---mandir=/usr/man   \
---libdir=/usr/lib64 \
+$ <b>./configure</b>        \
+--prefix=/usr        \   
+--sysconfdir=/etc    \
+--mandir=/usr/man    \
+--libdir=/usr/lib64  \
 --enable-utf8
 </pre>
 
@@ -216,7 +235,7 @@ Feita isto vamos compilar o software em si! Para isto utilizamos o <b>make</b>, 
 </p>
 
 <pre class="code">
-$ make -j 6
+$ <b>make</b> -j 6
 </pre>
 
 <p>
@@ -225,7 +244,7 @@ Para isto vamos precisar criar agora um diretório em /tmp chamado <b>build</b>/
 </p>
 
 <pre class="code">
-$ mkdir -vp /tmp/build/nano-4.7
+$ <b>mkdir</b> -vp /tmp/build/nano-4.7
 mkdir: created directory '/tmp/build'
 mkdir: created directory '/tmp/build/nano-4.7'
 </pre>
@@ -235,7 +254,7 @@ Feito isto vamos realizar a instalação com make install, passando a variável 
 </p>
 
 <pre class="code">
-$ make install <b>DESTDIR</b>='/tmp/build/nano-4.7/'
+$ <b>make</b> install <b>DESTDIR</b>='/tmp/build/nano-4.7/'
 </pre>
 
 <p>
@@ -243,10 +262,12 @@ Vamos agora entrar no diretório /tmp/build/nano-versao e ver que toda estrutura
 </p>
 
 <pre class="code">
-$ cd /tmp/build/nano-4.7
-$ ls 
+$ <b>cd</b> /tmp/build/nano-4.7
+
+$ <b>ls</b> 
 usr
-$ tree --filelimit 10
+
+$ <b>tree</b> --filelimit 10
 .
 └── usr
     ├── bin
@@ -289,6 +310,10 @@ Entendeu a mágica do fakeroot/raiz falsa. Então a partir daqui vamos começar 
 </p>
 
 
+<hr class="DIV_TEXT">
+
+
+
 <!-------------- 
                  CREATEPKG 
 -------------->
@@ -326,7 +351,7 @@ Em seguida crie uma função chamada <b>CREATE</b>, ela será encarregada de faz
 #            com o utilitário xz.
 #==============================================================|
 # Erros? pare. 
-set -e
+<b>set</b> -e
 
 #==========================| FUNÇÕES
 <b>CREATE</b>()
@@ -365,7 +390,7 @@ Voltando a função <b>CREATE</b>, vamos preencher com alguns dados! O primeiro 
 <b>CREATE</b>()
 {
    # Recebendo o nome do pacote passado para a função.
-   local PKG="$1"
+   local <b>PKG</b>="$1"
 </pre>
 
 <p>
@@ -406,32 +431,32 @@ O nosso programa deve ficar assim por completo:
 set -e
 
 #==========================| FUNÇÕES
-CREATE()
+<b>CREATE</b>()
 {
    # Recebendo o nome do pacote passado para a função.
-   local PKG="$1"
+   local <b>PKG</b>="$1"
 
    # Empacotando todo o diretório e gerando o pacote
    # um diretório acima.
-   tar -cvJf ../${PKG} .
-   echo
-   echo "O pacote ${PKG} foi gerado com sucesso."
-   return 0
+   <b>tar</b> -cvJf ../${PKG} .
+   <b>echo</b>
+   <b>echo</b> "O pacote ${PKG} foi gerado com sucesso."
+   <b>return</b> 0
 }
 
 #==========================| INICIO
-case $1 in
-   -c|--create|create)
+<b>case</b> <i>$1</i> <b>in</b>
+   <b>-c</b>|<b>--create</b>|<b>create</b>)
       shift # Rebaixando um parâmetro posicional.
 
       # O usuário passou o nome do pacote? exemplo dialog-teste.tar.xz
-      if [ -z "$1" ]; then
+      <b>if</b> <b>[</b> <b>-z</b> "$1" <b>]</b>; <b>then</b>
          echo "Você deve especificar o nome do pacote."
          exit 1
-      fi
+      <b>fi</b>
 
       # Chamando a função CREATE e passando como parâmetro o nome do pacote.
-      CREATE "$1"
+      <b>CREATE</b>1 "$1"
    ;;
 esac
 </pre>
@@ -441,13 +466,13 @@ Entre como root, dê permissão de execução para o <b>createpkg</b>, e envie o
 </p>
 
 <pre class="code">
-# ls
+# <b>ls</b>
 createpkg
 
-# chmod -v +x createpkg 
+# <b>chmod</b> -v +x createpkg 
 mode of 'createpkg' retained as 0755 (rwxr-xr-x)
 
-# cp -v createpkg /usr/sbin/
+# <b>cp</b> -v createpkg /usr/sbin/
 'createpkg' -> '/usr/sbin/createpkg'
 </pre>
 
@@ -497,7 +522,8 @@ Vamos retornar um diretório acima e veremos que o pacote foi gerado =)
 nano-4.7  <b>nano-4.7.tar.xz</b>
 </pre>
 
-<hr>
+<hr class="DIV_TEXT">
+
 
 <!-------------- 
                  PKGINSTALL 
@@ -767,7 +793,8 @@ Vamos primeiramente ver se nossa lista de rastreamento foi criada em <b>/var/log
 Tudo certo até aqui, será que o <b>editor nano 4.7</b> está disponivel no sistema? chame em linha de comando <b>nano</b> e veja.
 </p>
 
-<hr>
+<hr class="DIV_TEXT">
+
 
 <!-------------- 
                  PKGREMOVE 
