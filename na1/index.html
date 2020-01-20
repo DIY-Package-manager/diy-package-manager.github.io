@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<title>DPM - N-a1</title>
+	<meta name="author" content="Jefferson Rocha 'slackjeff'"/>
+    <meta name="email" content="root@slackjeff.com.br"/>
+    <meta name="description" content="Aprenda a construir um gerenciador de pacotes"/>
+    <meta name="keywords" content="gerenciador de pacotes, linux, gnu, gerenciador"/>
+    <meta http-equiv="content-language" content="pt-br"/>
+    <meta name="copyright" content="© 2020 minuX"/>
+	  <meta charset="utf-8">
+    <link rel="shortcut icon" href="../imgs/favicon.png" />
+    <link rel="stylesheet" type="text/css" href="../css/style.css"/>
+</head>
+<body>
+           <!---------- INFORMAÇÕES ---------->
+
+<h1>DIY-PACKAGE MANAGER: N-a1</h1>
+<pre>
+Atualização: 20/01/2020
+Versão: 1.0
+Autor: Jefferson 'Slackjeff' Rocha
+</pre>
+
+<hr>
+
+           <!---------- CONTEUDO ---------->
+
+<h1>Conteúdo</h1>
+   <ol>
+      <li><a href="#sobre-na1"><b>N-a1</b></a></li>
+      <li><a href="#tipos-gerenciadores-de-pacotes"><b>Tipos de gerenciadores de pacotes</b></a></li>
+          <ul>
+            <li><a href="#baixo-nivel">1.1 Baixo nível</a></li>
+            <li><a href="#alto-nivel">1.2 Alto nível</a></li>
+          </ul>
+      <li><a href="#iniciando"><b>Iniciando</b></a></li>
+          <ul>
+             <li><a href="#abordagem-fakeroot">3.1 Abordagem fakeroot</a></li>
+             <li><a href="#createpkg">3.2 createpkg - Criando um pacote</a></li>
+             <li><a href="#pkginstall">3.3 pkginstall - Instalado um pacote</a></li>
+             <li><a href="#pkgremove">3.4 pkgremove - Removendo um pacote</a></li>
+             <li><a href="#scripts">3.5 Todos os scripts prontos</a></li>
+          </ul>
+      <li><a href="#final"><b>Considerações finais da série a1</b></a></li>
+   </ol>
+<hr>
+
+<!---------- ENTENDA A N-a1  ---------->
+<h1 id="sobre-na1">N-a1</h1>
+<p>
+Este nível <b>a1</b> visa abordar a parte estrutural de um gerenciador de pacotes de baixo nível, seguindo a filosofia do UNIX, vamos criar a primeira versão bem simplória de três programas: (<b>criar</b>, <b>instalar</b>, <b>remover</b>) um pacote.
+</p>
+
+<p>
+Não vamos se preocupar tanto com vaidade e sim como funciona todo o esquema destes três processos. Por isso é de extrema importância você não executar estes programas em seu sistema operacional diário! Você pode executar em uma virtualbox, ou até mesmo criar um ambiente enjaulado e entrar com chroot.
+</p>
+
+<p>
+Este nível como dito acima não chega nem perto de um gerenciador de baixo nível seguro e utilizável em uma distribuição diária. Mas é totalmente funcional e é o pontapé inicial. Tenha uma boa diversão.
+</p>
+
+<!---------- TIPOS DE GERENCIADORES DE PACOTES  ---------->
+
+<h1 id="tipos-gerenciadores-de-pacotes">2. Tipos de gerenciadores de pacotes</h1>
+<p>
+Normalmente pensamos que um gerenciador de pacotes é tudo a mesma coisa, quando normalmente não é! Existem dois tipos de gerenciadores os de baixo nível e os de alto nível. Cada um realiza um tipo de função, como por exemplo, o dpkg do debian faz a parte estrutural de um pacote e o apt/apt-get faz a parte inteligente, como resolver dependências.
+</p>
+
+<h2 id="baixo-nivel">2.1 Baixo nível</h2>
+<p>
+O gerenciador de baixo nível é o coração do gerenciador. É ele que cria, instala, remove, atualiza pacotes. Alguns exemplos de gerenciadores de baixo nível são:  
+</p>
+
+<ul>
+  <li>dpkg</li>
+  <li>bananapkg</li>
+  <li>rpm</li>
+  <li>pkgtools</li>
+</ul>
+
+<p>
+Então quando você faz alguma função listada acima, você está utilizando o gerenciador de baixo nível!
+</p>
+
+<h2 id="alto-nivel">2.2 Alto nível</h2>
+<p>
+O gerenciador de alto nível realiza a parte mais inteligente do gerenciamento, é ele que se encarrega de baixar pacotes disponivel em um determinado espelho, resolve dependências se assim permitir e faz todo este processo mais burocrático. Gerenciadores de alto nível:
+</p>
+
+<ul>
+  <li>apt</li>
+  <li>slackpkg (não resolve dependências)</li>
+  <li>dnf/yum</li>
+</ul>
+
+<!---------- O QUE VAMOS APRENDER? ---------->
+<h1 id="iniciando">3. Iniciando</h1>
+<h2 id="abordagem-fakeroot">3.1 Abordagem fakeroot</h2>
+<p>
+<p>
+O primeiro passo é você entender como funciona um software compilado da fonte!<br>
+Vamos utilizar o mêtodo Fakeroot, que significa Raiz Falsa, para entendermos o conceito precisamos saber como é instalado um programa por de trás dos panos.
+</p>
+
+<p>
+Para esta abordagem vamos usar um software criado com autotools, que possui ferramentas como ./configure, makefile etc...
+</p>
+
+<p>
+Ao grosso modo ao instalar um programa ele possui toda a estrutura dos diretórios, como usr/{bin,share,man,doc}, etc/, /lib64, /lib ... Está estrutura se instalado com make install é solta diretamente na raiz / do sistema, logo podemos saber que a instalação será feita e você já pode executar o seu software.
+</p>
+
+<p>
+Isso se tratando de softwares convencionais, os opcionais como Firefox/Telegram etc... Normalmente ficam em um diretório a parte em opt/ e normalmente já são pré-compilados.
+</p>
+
+<p>
+Quando compilamos e fizemos um make install é feito o passo que falamos acima, é solto basicamente toda a estrutura do programa pré compilado na raiz /. Este processo é válido e se o desenvolvedor ter a boa vontade ele pode ter inserido a opção de desinstalação do software <b>make desinstall</b>.
+</p>
+
+<p>
+Caso não houve boa vontade você terá que remover toda hierarquia instalado pelo software manualmente! Isto te dá um controle é claro, mas o tempo que você perde... Hmm, é complicado.
+</p>
+
+<p>
+É ai que entra o fakeroot, vamos enganar o sistema dizendo um diretório especifico ao invés de instalar na raiz /. Este diretório falso é essencial, pois podemos manipular todo o programa pre-compilado antes da instalação. Isto se tratando de software compilados, se for scripts podemos usar a mesma abordagem do fakeroot :)
+</p>
+
+<p>
+Assim fizemos os nossos enfeites que vamos abordar mais adiante.
+</p>
+
+<p>
+Para um exemplo, supondo que rodei toda a base ./configure && make e ao invés de por make install somente botaria em make install DESTDIR=/Um/Diretorio
+</p>
+
+<p>
+Vamos usar um software como base para compilar da fonte! Assim você terá mais visão do que abordamos acima.
+</p>
+
+<p>
+Vamos utilizar o editor de texto <a href="https://www.nano-editor.org/download.php" target="_blank">nano</a> para iniciar a brincadeira.
+</p>
+
+<p>
+Primeiramente crie um diretório em /tmp/ chamado source é dentro deste diretório aonde vamos armazenar o código fonte do nano. Dentro de /tmp/source crie o diretório nano.
+</p>
+
+<pre class="code">
+$ mkdir -vp /tmp/source/nano
+</pre>
+
+<p>
+E adquira o fonte do editor <a href="https://www.nano-editor.org/download.php" target="_blank">nano</a> e baixe com wget em /tmp/source/nano/, após feito o download descompacte o mesmo!
+</p>
+
+<pre class="code">
+$ cd /tmp/source/nano
+$ wget https://www.nano-editor.org/dist/v4/nano-4.7.tar.xz
+$ tar xvf nano-4.7.tar.xz
+</pre>
+
+<p>
+Após feito este processo vamos entrar dentro do diretório que foi criado, é lá que está todo o fonte do editor nano!
+</p>
+
+<pre class="code">
+$ ls
+nano-4.7  nano-4.7.tar.xz
+$ cd nano-4-7
+</pre>
+
+<p>
+Como dito, este livro está trabalhando com abordagem do autotools. Execute agora o script <b>configure</b> com ele podemos fazer pré-configurações como: a raiz aonde será solto o software, desabilitar/habilitar funcionalidades em geral do software etc, etc...
+</p>
+
+<div class="note">
+<b>Nota!</b>
+<p>
+Você pode usar o <b>./configure --help</b> para saber todas opções disponiveis que você pode habilitar/desabilitar.<br>
+</p>
+
+<p>
+Como o objetivo deste livro não é "como compilar um software" e sim "Como escrever o seu gerenciador de pacotes", vamos usar configurações genéricas neste livro para não ser muita informação para você neste momento. Saiba que se você não sabe como funciona a compilação de programas provavelmente você não está apto a criar o seu gerenciador ainda.
+</p>
+</div>
+
+<pre class="code">
+$ ./configure       \
+--prefix=/usr       \
+--sysconfdir=/etc   \
+--mandir=/usr/man   \
+--libdir=/usr/lib64 \
+--enable-utf8
+</pre>
+
+<p>
+Entendendo as configurações usadas no configure.
+</p>
+
+<ul>
+  <li><b>--prefix</b> = A hierarquia de usr deve ficar em /usr e não em /usr/local. Normalmente esta hierarquia é em /usr/local/ o que pode ter muitos comflitos com o sistema, então pedimos para ser apenas /usr. </li>
+  <li><b>--sysconfdir</b> = Toda arquivos de configuração do software devem ficar em /etc.</li>
+  <li><b>--mandir</b> = Aonde será instalado o manual do software /usr/man.</li>
+  <li><b>--libdir</b> = Bibliotecas devem ficar em /usr/lib64</li>
+  <li><b>--enable-utf8</b> = Ativa suporte UTF-8.</li>
+</ul>
+
+<p>
+Lembre-se, isto não é uma receita de bolo, cada programa tem suas próprias configurações! O básico e pontapé inicial que você pode utilizar seria: (--prefix, --sysconfdir, --mandir, --libdir).
+</p>
+
+<p>
+Feita isto vamos compilar o software em si! Para isto utilizamos o <b>make</b>, se seu processador ter vários núcleos você pode especificar com -j <b>Número_de_Núcleos</b> assim a compilação será mais rápida. Exemplo aqui possuo 6 núcleos.
+</p>
+
+<pre class="code">
+$ make -j 6
+</pre>
+
+<p>
+Tudo certo até aqui? Não houve erros? então vamos fazer a instalação na raiz / falsa! a abordagem do fakeroot inicia aqui.
+Para isto vamos precisar criar agora um diretório em /tmp chamado <b>build</b>/<b>nome-do-programa.versão</b>. É lá que será a "raiz" falsa do editor nano. Crie o diretório em /tmp/build/nano-versao .
+</p>
+
+<pre class="code">
+$ mkdir -vp /tmp/build/nano-4.7
+mkdir: created directory '/tmp/build'
+mkdir: created directory '/tmp/build/nano-4.7'
+</pre>
+
+<p>
+Feito isto vamos realizar a instalação com make install, passando a variável <b>DESTDIR</b>. Assim enganamos o sistema dizendo que a raiz é em /tmp/build/nano-versao
+</p>
+
+<pre class="code">
+$ make install <b>DESTDIR</b>='/tmp/build/nano-4.7/'
+</pre>
+
+<p>
+Vamos agora entrar no diretório /tmp/build/nano-versao e ver que toda estrutura de diretórios estão lá!
+</p>
+
+<pre class="code">
+$ cd /tmp/build/nano-4.7
+$ ls 
+usr
+$ tree --filelimit 10
+.
+└── usr
+    ├── bin
+    │   ├── nano
+    │   └── rnano -> nano
+    ├── man
+    │   ├── man1
+    │   │   ├── nano.1
+    │   │   └── rnano.1
+    │   └── man5
+    │       └── nanorc.5
+    └── share
+        ├── doc
+        │   └── nano
+        │       ├── faq.html
+        │       ├── nano.1.html
+        │       ├── nano.html
+        │       ├── nanorc.5.html
+        │       └── rnano.1.html
+        ├── info
+        │   ├── dir
+        │   └── nano.info
+        ├── locale [35 entries exceeds filelimit, not opening dir]
+        └── nano [44 entries exceeds filelimit, not opening dir]
+</pre>
+
+<p>
+Perceba que toda hierarquia que seria solta na raiz / do sistema agora está aqui neste diretório!<br>
+Com isto podemos fazer o que quiser com o software, usar um compressor por exemplo como gzip e passar para um amigo o software compilado.<br>
+O seu amigo poderia extrair o software na raiz do sistema e teria o software pronto! Você poderia também a partir daqui copiar todo a estrutura para a raiz / do sistema.
+</p>
+
+<p>
+Mas isto seria um problema! Pois como dito no inicio teriamos que rastrear toda a estrutura que foi solta na raiz do sistema e excluir uma por uma, arquivo por arquivo, diretório por diretório, link simbólico por link simbólico.<br>
+Em grosso modo, é isso que os gerenciadores de baixo nível fazem! Eles fazem o rastreamento do software, gerando um pacote agrupando tudo em um "arquivo" assim facilitando para usuário de ter que fazer tudo isso manual.
+</p>
+
+<p>
+Entendeu a mágica do fakeroot/raiz falsa. Então a partir daqui vamos começar a criar nosso gerenciador de pacotes.
+</p>
+
+
+<!-------------- 
+                 CREATEPKG 
+-------------->
+
+
+<h2 id="createpkg">3.2 createpkg - Criando um pacote</h2>
+<p>
+O primeiro processo a ser feito é criar um script para empacotar o nosso software já compilado/estruturado, nesta primeira versão ele não fará nada além de empacotar e fazer pequenos ajustes!<br>
+</p>
+
+<p>
+No nivel a1 o createpkg deverá atender os seguintes requisitos:
+</p>
+
+<ul>
+  <li>Gere o pacote um diretório acima</li>
+</ul>
+
+<p>
+Iniciamos nosso programa com a SHEBANG e alguns dados como autor, versão e descrição, logo após isso utilizamos o set -e para o programa parar se o status de qualquer comando for diferente de <b>0</b>, ou seja erros.<br>
+Em seguida crie uma função chamada <b>CREATE</b>, ela será encarregada de fazer todo o processo de montagem do pacote.
+</p>
+
+<pre class="code">
+#!/bin/sh
+#=========================HEADER===============================|
+#AUTOR:
+# Jefferson Rocha <root@slackjeff.com.br>
+#
+#VERSÃO:
+# 0.1
+#
+#DESCRIÇÃO:
+#createpkg - cria pacotes compactador com tar e comprimido
+#            com o utilitário xz.
+#==============================================================|
+# Erros? pare. 
+set -e
+
+#==========================| FUNÇÕES
+<b>CREATE</b>()
+{
+}
+</pre>
+
+<p>
+O segundo passo é criar um case passando o primeiro argumento em linha, ou seja o primeiro parâmetro posicional <b>$1</b>. Em seguida criamos as opção para o case: <b>-c|--create|create</b> e rebaixamos um parâmetro com shift.<br>
+Logo após fizemos a conferência se o próximo parâmetro é nulo, se for devemos abortar pois o usuário não passou <b>o nome do pacote</b>, se não a FUNÇÃO <b>CREATE</b> deve ser chamada com o nome do pacote.
+</p>
+
+<pre class="code">
+#==========================| INICIO
+<b>case</b> <i>$1</i> <b>in</b>
+   <b>-c</b>|<b>--create</b>|<b>create</b>)
+      shift # Rebaixando um parâmetro posicional.
+
+      # O usuário passou o nome do pacote? exemplo dialog-teste.tar.xz
+      <b>if</b> <b>[</b> -z "$1" <b>]</b>; <b>then</b> 
+         echo "Você deve especificar o nome do pacote."
+         exit 1
+      <b>fi</b>
+
+      # Chamando a função CREATE e passando como parâmetro o nome do pacote.
+      CREATE "$1" 
+   ;;
+<b>esac</b>
+</pre>
+
+<p>
+Voltando a função <b>CREATE</b>, vamos preencher com alguns dados! O primeiro passo é ter uma variável para receber o parâmetro que enviamos para função. O nome da função será <b>PKG</b>, não esqueça de adicionar local na frente da variável para ficar somente local. 
+</p>
+
+<pre class="code">
+<b>CREATE</b>()
+{
+   # Recebendo o nome do pacote passado para a função.
+   local PKG="$1"
+</pre>
+
+<p>
+Vamos fazer o empacotamento com o tar e comprimindo com o xz todo o diretório e gerar o "pacote" um diretório acima.
+</p>
+
+<pre class="code">
+# Empacotando todo o diretório e gerando o pacote 
+# um diretório acima.
+<b>tar</b> -cvJf ../${PKG} .
+<b>echo</b> "O pacote ${PKG} foi gerado com sucesso."
+<b>return</b> 0
+}
+</pre>
+
+<p>
+Feito isto já temos um empacotamento básico! Perceba que o programa não faz quase nenhum tipo de conferência e existe MUITO para adicionar para ficar funcional no dia-dia... Este processo é descrito na <b>N-a2</b>, aonde aprimoramos nosso software de uma maneira aonde poderemos usar no dia-dia.
+</p>
+
+<p>
+O nosso programa deve ficar assim por completo:
+</p>
+
+<pre class="code">
+#!/bin/sh
+#=========================HEADER===============================|
+#AUTOR:
+# Jefferson Rocha <root@slackjeff.com.br>
+#
+#VERSÃO:
+# 0.1
+#
+#DESCRIÇÃO:
+#createpkg - cria pacotes compactador com tar e comprimido
+#            com o utilitário xz.
+#==============================================================|
+# Erros? pare.
+set -e
+
+#==========================| FUNÇÕES
+CREATE()
+{
+   # Recebendo o nome do pacote passado para a função.
+   local PKG="$1"
+
+   # Empacotando todo o diretório e gerando o pacote
+   # um diretório acima.
+   tar -cvJf ../${PKG} .
+   echo
+   echo "O pacote ${PKG} foi gerado com sucesso."
+   return 0
+}
+
+#==========================| INICIO
+case $1 in
+   -c|--create|create)
+      shift # Rebaixando um parâmetro posicional.
+
+      # O usuário passou o nome do pacote? exemplo dialog-teste.tar.xz
+      if [ -z "$1" ]; then
+         echo "Você deve especificar o nome do pacote."
+         exit 1
+      fi
+
+      # Chamando a função CREATE e passando como parâmetro o nome do pacote.
+      CREATE "$1"
+   ;;
+esac
+</pre>
+
+<p>
+Entre como root, dê permissão de execução para o <b>createpkg</b>, e envie o programa para /usr/sbin aonde nosso programa administrativo deve ficar, assim somente o usuário root pode executar...
+</p>
+
+<pre class="code">
+# ls
+createpkg
+
+# chmod -v +x createpkg 
+mode of 'createpkg' retained as 0755 (rwxr-xr-x)
+
+# cp -v createpkg /usr/sbin/
+'createpkg' -> '/usr/sbin/createpkg'
+</pre>
+
+<p>
+Após isso entre até o diretório aonde fizemos o fakeroot do nano! Lembra que fizemos em /tmp/build/nano-4.7? É neste diretório que devemos entrar e executar o <b>createpkg</b> com os devidos parâmetros, no caso -c, --create ou create.
+</p>
+
+<pre class="code">
+# <b>cd</b> /tmp/build/nano-4.7/
+
+# <b>ls</b>
+usr
+
+# <b>createpkg</b> -c nano-4.7.tar.xz
+./
+./usr/
+./usr/bin/
+./usr/bin/rnano
+./usr/bin/nano
+./usr/share/
+./usr/share/info/
+./usr/share/info/nano.info
+./usr/share/info/dir
+./usr/share/locale/
+./usr/share/locale/pl/
+./usr/share/locale/pl/LC_MESSAGES/
+./usr/share/locale/pl/LC_MESSAGES/nano.mo
+./usr/share/locale/hr/
+./usr/share/locale/hr/LC_MESSAGES/
+./usr/share/locale/hr/LC_MESSAGES/nano.mo
+./usr/share/locale/da/
+./usr/share/locale/da/LC_MESSAGES/
+./usr/share/locale/da/LC_MESSAGES/nano.mo
+..............
+
+<i>O pacote nano-4.7.tar.xz foi gerado com sucesso em: ../nano-4.7.tar.xz.</i>
+</pre>
+
+<p>
+Vamos retornar um diretório acima e veremos que o pacote foi gerado =)
+</p>
+
+<pre class="code">
+# <b>cd</b> ..
+
+# <b>ls</b>
+nano-4.7  <b>nano-4.7.tar.xz</b>
+</pre>
+
+<hr>
+
+<!-------------- 
+                 PKGINSTALL 
+-------------->
+
+<h2 id="pkginstall">3.3 pkginstall - Instalado um pacote</h2>
+<p>
+Temos já o nosso pacote criado mas falta alguma coisa? A instalação claro. A instalação é muito importante... Fica ao critério do instalador fazer o rastreamento/track de toda hierarquia que está sendo instalada. Sem este rastreamento ficaria inviável o gerenciador!<br>
+É como instalar com o make install, este track será importante para a remoção do pacote posteriormente.
+</p>
+
+No nivel a1 o pkginstall deverá atender os seguintes requisitos:
+<ul>
+  <li>Criar o arquivo de rastreamento</li>
+     <ul>
+       <li>Fazer pequenas alterações no arquivo de rastreamento</li>
+     </ul>
+</ul>
+
+<p>
+Vamos iniciar nosso script, criamos uma variável chamada <b>INSTALLED_PKG</b> e no seu contéudo deverá ter <b>/var/log/installed</b>.<br>
+Este diretório: /var/log/installed/ será armazenado a nossa lista de rastreamento dos softwares! Utilizados para outros processos posteriormente como remover o pacote.
+</p>
+
+<pre class="code">
+#!/bin/sh
+#==============================HEADER================================|
+#AUTOR
+# Jefferson 'Slackjeff' Rocha <root@slackjeff.com.br>
+#
+#VERSÃO
+# 0.1
+#
+#DESCRIÇÃO
+#pkginstall - Instala pacotes gerado com o createpkg e gera uma lista
+#             de rastreamento em /var/log/installed/PKG.track
+#====================================================================|
+
+set -e
+
+#======================== CONFIGURAÇÕES
+INSTALLED_PKG="/var/log/installed"
+</pre>
+
+<p>
+Criamos uma área de testes! No caso conferindo se o diretório /var/log/installed existe! se não existir deve ser criado.
+</p>
+
+<pre class="code">
+#======================== TESTES
+[ ! -d $INSTALLED_PKG ] && mkdir $INSTALLED_PKG
+</pre>
+
+<p>
+Em seguida criamos uma função chamada <b>INSTALL</b> e um case simples com as opções: <b>-i|--install|install</b>.
+</p>
+
+<p>
+Neste case, na opção <b>-i|--install|install</b> deveremos iniciar fazendo um rebaixamento de parâmetro com o shift, após isso fizemos uma conferencia com o test verificando se o pacote que o usuário está pedindo para instalar existe! Se existir deve chamar a função <b>INSTALL</b>.
+</p>
+
+<pre class="code">
+<b>INSTALL</b>()
+{
+
+}
+
+#======================== INICIO
+<b>case</b> $1 <b>in</b>
+   <b>-i</b>|<b>--install</b>|<b>install</b>)
+      shift # Rebaixando parâmetro.
+      # Se o arquivo existir chem a função INSTALL com o nome do pacote.
+      <b>[</b> -e "$1" <b>]</b> && INSTALL "$1"
+   <b>;;</b>
+
+   *) echo "Opções disponiveis: -i|--install|install" ;;
+<b>esac</b>
+</pre>
+
+<p>
+Voltando para a função <b>INSTALL</b>, vamos começar a preparar nossa função. Estamos passando o nome do pacote para função, a função deve receber o argumento/pacote em uma variável chamada <b>pkg</b>, outra variável que devemos iniciar é a variável <b>pkg_only_name</b>, está variável armazenará somente o nome do pacote cortando qualquer extensão. Não esqueça do local para deixar somente local a variável.
+</p>
+
+<pre class="code">
+<b>INSTALL</b>()
+{
+   # Nome do pacote completo com extensão
+   local <b>pkg</b>="$1"
+
+   # Nome do pacote sem extensão .tar.xz
+   local <b>pkg_only_name</b>="${pkg//.tar.xz/}"
+</pre>
+
+<p>
+Agora que já temos o nome do pacote com extensão e sem vamos imprimir alguma coisa na tela para o usuário... Outra informação é iniciar o arquivo pacote.track em /var/log/installed/pacote.track enviando como comentário o nome do pacote.
+</p>
+
+<pre class="code">
+# Informação para o usuário.
+<b>echo</b> "========> Iniciando instalação do pacote ${pkg}"
+
+# Criando arquivo .track e enviando nome do pacote como comentário.
+<b>echo</b> "#PACOTE: ${pkg_only_name}" <b>></b> "${INSTALLED_PKG}/${pkg_only_name}.track"
+echo
+</pre>
+
+<p>
+Seguindo, vamos fazer a extração do pacote na raiz / do sistema; Utilizando o comando tar. Mas tem uma diferença... Precisamos enviar tudo que está sendo extraido na raiz com o comando tar para o arquivo <b>pacote.track</b> para isto use o redirecionamento <b>>></b> que envia a sáida de um comando anexando o mesmo sem sobreescrever.
+</p>
+
+<pre class="code">
+# Fazendo extração do pacote e enviando a lista do que está sendo instalado
+# para o arquivo .track
+<b>tar</b> xvf ${pkg} -C / <b>>></b> "${INSTALLED_PKG}/${pkg_only_name}.track"
+</pre>
+
+<p>
+A lista de rastreamento que será criada em /var/log/installed irá ficar com alguns caracteres extras como: <b>./</b>, <b>/</b>, e linhas em branco! Precisamos apagar tudo isso e deixar somente o que importa que é a hierarquia do que está sendo instalado.
+</p>
+
+<p>
+Vamos usar o comando sed para fazer este processo, enviando a sua saída de erros para /dev/null.
+</p>
+
+<pre class="code">
+echo "Removendo caracteres desnecessários do arquivo .track"
+
+# Removendo alguns caracteres não importantes! e que podem resultar em falhas.
+<b>sed</b> -i 's/\.\//\//g; s/^\/$//; /^$/d' "${INSTALLED_PKG}/${pkg_only_name}.track" 2>/dev/null
+</pre>
+
+<p>
+Então pedimos para o sed: substitua ./ por /; substitua se existir somente / por nada; apague linhas em branco.
+</p>
+
+<p>
+Em seguida enviamos uma mensagem para o usuário seguido de um return 0.
+</p>
+
+<pre class="code">
+echo "Pacote: $pkg foi instalado com sucesso."
+return 0
+</pre>
+
+<p>
+Nosso programa deve ficar assim completo:
+</p>
+
+<pre class="code">
+#!/bin/sh
+#==============================HEADER================================|
+#AUTOR
+# Jefferson 'Slackjeff' Rocha <root@slackjeff.com.br>
+#
+#VERSÃO
+# 0.1
+#
+#DESCRIÇÃO
+#pkginstall - Instala pacotes gerado com o createpkg e gera uma lista
+#             de rastreamento em /var/log/installed/PKG.track
+#====================================================================|
+
+<b>set</b> -e
+
+#======================== CONFIGURAÇÕES
+<b>INSTALLED_PKG</b>="/var/log/installed/"
+
+#======================== TESTES
+<b>[</b> ! <b>-d</b> $INSTALLED_PKG <b>]</b> && <b>mkdir</b> $INSTALLED_PKG
+
+
+#======================== FUNÇÕES
+INSTALL()
+{ 
+    # Nome do pacote completo com extensão
+    local <b>pkg</b>="$1"
+
+    # Nome do pacote sem extensão .tar.xz
+    local <b>pkg_only_name</b>="${pkg//.tar.xz/}"
+
+    # Informação para o usuário.
+    <b>echo</b>"========> Iniciando instalação do pacote ${pkg}"
+
+    # Criando arquivo .track e enviando nome do pacote como comentário.
+    <b>echo</b> "#PACOTE: ${pkg_only_name}" > "${INSTALLED_PKG}/${pkg_only_name}.track"
+    <b>echo</b>
+
+    # Fazendo extração do pacote e enviando a lista do que está sendo instalado
+    # para o arquivo .track
+    <b>tar</b> xvf ${pkg} -C / >> "${INSTALLED_PKG}/${pkg_only_name}.track"
+
+    echo "Removendo caracteres desnecessários do arquivo .track"
+    # Removendo alguns caracteres não importantes! e que podem resultar em falhas.
+    <b>sed</b> -i 's/\.\//\//g; s/^\/$//; /^$/d' "${INSTALLED_PKG}/${pkg_only_name}.track" 2>/dev/null
+
+    <b>echo</b> "Pacote: $pkg foi instalado com sucesso."
+    <b>return</b> 0
+}
+
+#======================== INICIO
+<b>case</b> $1 <b>in</b>
+   -i|--install|install)
+      shift # Rebaixando parâmetro.
+      # Se o arquivo existir chem a função INSTALL com o nome do pacote.
+      [ -e "$1" ] && INSTALL "$1"
+   ;;
+
+   *) echo "Opções disponiveis: -i|--install|install" ;;
+<b>esac</b>
+</pre>
+
+<p>
+Vamos fazer o nosso teste, vamos dar permissão e enviar para /usr/sbin, entrar no diretório /tmp/build/ aonde está localizado nosso pacote que criamos com o <b>createpkg</b> e executar o <b>pkginstall</b> seguido do nome do pacote.
+</p>
+
+<pre class="code">
+# chmod -v +x pkginstall 
+mode of 'pkginstall' retained as 0755 (rwxr-xr-x)
+
+# cp pkginstall /usr/sbin/
+
+# cd /tmp/build/
+
+# pkginstall -i nano-4.7.tar.xz 
+========> Iniciando instalação do pacote nano-4.7.tar.xz
+
+Removendo caracteres desnecessários do arquivo .track
+Pacote: nano-4.7.tar.xz foi instalado com sucesso.
+</pre>
+
+<p>
+Vamos primeiramente ver se nossa lista de rastreamento foi criada em <b>/var/log/installed/</b>.
+</p>
+
+<pre class="code">
+# <b>cat</b> /var/log/installed/nano-4.7.track
+#PACOTE: nano-4.7
+/usr/
+/usr/bin/
+/usr/bin/rnano
+/usr/bin/nano
+/usr/share/
+/usr/share/info/
+/usr/share/info/nano.info
+/usr/share/info/dir
+/usr/share/locale/
+/usr/share/locale/pl/
+/usr/share/locale/pl/LC_MESSAGES/
+/usr/share/locale/pl/LC_MESSAGES/nano.mo
+/usr/share/locale/hr/
+/usr/share/locale/hr/LC_MESSAGES/
+/usr/share/locale/hr/LC_MESSAGES/nano.mo
+/usr/share/locale/da/
+/usr/share/locale/da/LC_MESSAGES/
+/usr/share/locale/da/LC_MESSAGES/nano.mo
+/usr/share/locale/ko/
+/usr/share/locale/ko/LC_MESSAGES/
+/usr/share/locale/ko/LC_MESSAGES/nano.mo
+/usr/share/locale/ga/
+/usr/share/locale/ga/LC_MESSAGES/
+/usr/share/locale/ga/LC_MESSAGES/nano.mo
+/usr/share/locale/fr/
+......................
+</pre>
+
+<p>
+Tudo certo até aqui, será que o <b>editor nano 4.7</b> está disponivel no sistema? chame em linha de comando <b>nano</b> e veja.
+</p>
+
+<hr>
+
+<!-------------- 
+                 PKGREMOVE 
+-------------->
+
+<h2 id="pkgremove">3.4 pkgremove - Removendo um pacote</h2>
+<p>
+Até agora conseguimos criar um pacote e instalar, porém uma das partes mais importantes não foi criada, a parte de remover o pacote e toda sua hierarquia no sistema. 
+</p>
+
+<p>
+Esta é a parte mais complexa, pois deverá ser feita com mais segurança! Já penso remover o que não pode na raiz / do sistema? Precisamos criar algo com um pouco mais de segurança... Por isso preste muita atenção nos detalhes.
+</p>
+
+<p>
+Iniciamos nosso script como todos os outros dois que criamos, cabeçalho, e o set -e. Devemos iniciar uma função chamada <b>REMOVE</b> e um case com as opções: <b>-r|--remove|remove</b>.
+</p>
+
+<p>
+Na opção <b>-r|--remove|remove</b> devemos inserir um shift para rebaixar o parâmetro posicional e um teste verificando se o pacote está no sistema. Para isto usamos como base o arquivo de track localizado em <b>/var/log/installed</b>.
+</p>
+
+<p>
+Vamos também entrar no diretório /var/log/installed para iniciar o processo de remoção!
+</p>
+
+<pre class="code">
+#!/bin/sh
+#=========================HEADER===============================|
+#AUTOR:
+# Jefferson Rocha <root@slackjeff.com.br>
+#
+#VERSÃO:
+# 0.1
+#
+#DESCRIÇÃO:
+#removepkg - Remove pacote e hierarquia do sistema operacional.
+#==============================================================|
+# Erros? pare.
+set -e
+
+#==========================| FUNÇÕES
+<b>REMOVE</b>()
+{
+}
+
+#==========================| INICIO
+case $1 in
+   -r|--remove|remove)
+      shift # Rebaixando um parâmetro posicional.
+
+      # O usuário passou o nome de algum pacote?
+      [ -z "$1" ] && { echo "Você deve fornecer o nome do pacote."; exit 1 ;}
+
+      # Entrando no diretório /var lalala
+      cd /var/log/installed
+</pre>
+
+<p>
+Vamos lançar um loop for com o glob <b>*</b> para verificar todos tracks que existem dentro do diretório /var/log/installed. Poderiamos usar um simples ls, porém para ganhar um pouco de velocidade e economizar pipes lançamos o loop for, fazendo uma verificação com grep se tem o padrão. O padrão no caso é o nome do pacote, se existir o padrão, lançamos em uma variável para fazer a captura e pausamos o for. Se tudo deu certo no final a função é iniciada.
+</p>
+
+<pre class="code">
+# Fazendo a listagem do diretório /var/log/installed e
+# conferindo se o pacote está instalado no sistema.
+<b>for</b> pack_exist in *; <b>do</b>
+   <b>if</b> <b>!</b> <b>[</b> "$(grep "$1" < ${pack_exist})" <b>]</b>; <b>then</b>
+      echo "O pacote $1 não está instalado no sistema."
+      exit 1
+   <b>else</b>
+      # Capturando o nome do track para lançar na função REMOVE.
+      <b>pkg_for_remove</b>="$pack_exist"
+      break
+   <b>fi</b>
+<b>done</b>
+
+# Chamando a função REMOVE e passando como parâmetro o nome do pacote.
+<b>REMOVE</b> "$pkg_for_remove"
+;;
+<b>esac</b>
+</pre>
+
+<p>
+Agora o trabalho "pesado" vai começar, vamos começar a elaborar a função <b>REMOVE</b> como normal, vamos lançar a variável <b>pkg_remove</b> no inicio para capturar o nome do track.
+</p>
+
+<pre class="code">
+REMOVE()
+{
+   local <b>pkg_remove</b>="$1"
+</pre>
+
+<p>
+Vamos precisar lançar três loops while para percorrer todo o arquivo track! Começando com <b>Arquivo comum</b>. O mesmo será alimentado com o track para ler <b>linha</b> a <b>linha</b> todo o track, com isto vamos removendo tudo que é arquivo que foi instalado.
+</p>
+
+<pre class="code">
+# Deletando arquivos.
+<b>while</b> read the_file; <b>do</b>
+   <b>rm</b> $the_file 2>/dev/null && echo " Delete: $the_file"
+<b>done</b> < "$pkg_remove"
+</pre>
+
+<p>
+Outro loop while precisa ser chamado, desta vez removendo <b>SE</b> existir links simbólicos... Eles não podem ficar soltos no sistema do usuário.
+</p>
+
+<pre class="code">
+# Removendo links simbólicos se existir..
+<b>while</b> read the_link; <b>do</b>
+   <b>unlink</b> $the_link &>/dev/null && echo "Delete Links: $the_link"
+<b>done</b> < "$pkg_remove"
+</pre>
+
+<p>
+E por último diretórios que ficaram vazios no sistema, por exemplo /usr/share/nano etc... Vamos fazer mais um loop while, ainda sendo alimentado pelo track.
+</p>
+
+<pre class="code">
+# Removendo diretórios nulos
+<b>while</b> read the_dir; <b>do</b>
+   <b>rm</b> -d $the_dir &>/dev/null && echo "Delete empty directories: $the_dir"
+<b>done</b> < "$pkg_remove"
+</pre>
+
+<p>
+Por final vamos apagar o arquivo <b>nano.track</b> para o gerenciador saber que ele foi removido!
+</p>
+
+<pre class="code">
+<b>echo</b> "Deletando track ${pkg_remove}"
+<b>[</b> <b>-e</b> "${pkg_remove}" <b>]</b> && <b>rm</b> -v ${pkg_remove}
+</pre>
+
+<p>
+Nosso programa pkgremove deve ficar assim no final:
+</p>
+
+<pre class="code">
+#!/bin/sh
+#=========================HEADER===============================|
+#AUTOR:
+# Jefferson Rocha <root@slackjeff.com.br>
+#
+#VERSÃO:
+# 0.1
+#
+#DESCRIÇÃO:
+#removepkg - Remove pacote e hierarquia do sistema operacional.
+#==============================================================|
+# Erros? pare.
+set -e
+
+#==========================| FUNÇÕES
+REMOVE()
+{
+   local pkg_remove="$1"
+
+   # Deletando arquivos.
+   while read the_file; do
+      rm $the_file 2>/dev/null && echo " Delete: $the_file"
+   done < "$pkg_remove"
+
+   # Removendo links simbólicos se existir..
+   while read the_link; do
+      unlink $the_link &>/dev/null && echo "Delete Links: $the_link"
+   done < "$pkg_remove"
+
+   # Removendo diretórios nulos
+   while read the_dir; do
+      rm -d $the_dir &>/dev/null && echo "Delete empty directories: $the_dir"
+   done < "$pkg_remove"
+
+   echo "Deletando track ${pkg_remove}"
+   [ -e "${pkg_remove}" ] && rm -v ${pkg_remove}
+}
+
+#==========================| INICIO
+case $1 in
+   -r|--remove|remove)
+      shift # Rebaixando um parâmetro posicional.
+
+      # O usuário passou o nome de algum pacote?
+      [ -z "$1" ] && { echo "Você deve fornecer o nome do pacote."; exit 1 ;}
+
+      # Entrando no diretório /var lalala
+      cd /var/log/installed
+
+      # Fazendo a listagem do diretório /var/log/installed e
+      # conferindo se o pacote está instalado no sistema.
+      for pack_exist in *; do
+         if ! [ "$(grep "$1" < ${pack_exist})" ]; then
+            echo "O pacote $1 não está instalado no sistema."
+            exit 1
+         else
+            pkg_for_remove="$pack_exist"
+            break
+         fi
+      done
+
+      # Chamando a função REMOVE e passando como parâmetro o nome do pacote.
+      REMOVE "$pkg_for_remove"
+   ;;
+esac
+</pre>
+
+<p>
+Dê permissão de execução e envie para /usr/sbin, em seguida execute pkgremove -r nano para fazer o teste.
+</p>
+
+<pre class="code">
+# <b>chmod</b> -v +x pkgremove 
+mode of 'pkgremove' retained as 0755 (rwxr-xr-x)
+
+# <b>cp</b> -v pkgremove /usr/sbin/
+'pkgremove' -> '/usr/sbin/pkgremove'
+
+# <b>pkgremove</b> -r nano
+Delete: /usr/bin/rnano
+Delete: /usr/bin/nano
+Delete: /usr/share/info/nano.info
+Delete: /usr/share/info/dir
+Delete: /usr/share/locale/pl/LC_MESSAGES/nano.mo
+Delete: /usr/share/nano/texinfo.nanorc
+Delete: /usr/share/nano/nanorc.nanorc
+Delete: /usr/man/man1/rnano.1
+Delete: /usr/man/man5/nanorc.5
+Delete empty directories: /usr/share/info/
+Delete empty directories: /usr/share/doc/nano/
+Delete empty directories: /usr/share/nano/
+.........................
+
+Deletando track nano-4.7.track
+removed 'nano-4.7.track'
+</pre>
+
+<p>
+Perfeito! Funcionou tudo corretamente... Para não ficar a lista muito longa o resultado foi cortado!
+Não temos mais o nano no sistema vamos ter que reinstalar ele, com o nosso gerenciador de pacotes claro :)
+</p>
+
+<pre class="code">
+# <b>which</b> nano
+which: no nano in (/usr/local/sbin:/usr/local/bin:/sbin:/usr/sbin:/bin:/usr/bin)
+
+# <b>cd</b> /tmp/build/
+
+# <b>ls</b>
+nano-4.7  nano-4.7.tar.xz
+
+# <b>pkginstall</b> -i nano-4.7.tar.xz 
+========> Iniciando instalação do pacote nano-4.7.tar.xz
+
+Removendo caracteres desnecessários do arquivo .track
+Pacote: nano-4.7.tar.xz foi instalado com sucesso.
+
+# <b>which</b> nano
+/usr/bin/nano
+</pre>
+
+<h2 id="scripts">3.5 Todos os scripts prontos</h2>
+<p>
+Se você quiser dar uma olhada em todos os programas que criamos <b>createpkg</b>, <b>pkginstall</b> e <b>pkgremove</b>. Eles estão disponiveis no <a href="https://github.com/DIY-Package-manager/scripts/tree/master/na1_scripts" target="_blank">github</a>
+</p>
+
+<h2 id="final">4. Considerações finais do nível a1</h2>
+<p>
+Vimos que nosso gerenciador de pacotes está funcional, criando pacotes, instando e removendo! Mas não com perfeição... Há muito a ser feito ainda e muitas funcionalidades precisam ser inseridas.
+</p>
+
+<p>
+Por exemplo, nosso gerenciador não instala vários pacotes de uma só vez, não instala pacotes de um diretório diferente, somente quando você está no mesmo que o pacote. Também temos a questão de instalar em outro lugar "raiz" utilizado para fazer um jailroot. Outra questão é de por "comandos" em um script de pré e pós instalação do pacote! Tudo é muito estático. No nível <b>a2</b> vamos fazer estas e mais algumas melhorias. Assim você pode utilizar no seu dia a dia.
+</p>
+
+<p>
+Outro detalhe que o código está muito simples e foi feito proposicionalmente! Poderiamos ter feito código mais complexos para agilizar muita coisa, porém a abordagem é direcionado para aprendizagem, o programador menos experiente precisa entender bloco a bloco o que está acontecendo e com comentários para complementar :)<br>
+Abordagem continuará assim nesta pegada em outros niveis.
+</p>
+
+<p align="center">
+<br><b>Obrigado pela leitura e bom divertimento</b>
+</p>
+
+           <!---------- FOOTER  ---------->
+<footer>
+  <hr>
+<pre align="center">
+<b>© Copyright Jefferson 'Slackjeff' Rocha.</b>
+Se você for utilizar qualquer texto/script deste livro mantenha todos os créditos para o autor e DPM.
+</pre>
+</footer>
+
+</body>
+</html>

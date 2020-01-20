@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<title>Bem vindo | DIY PACKAGE MANAGER</title>
+	<meta name="author" content="Jefferson Rocha 'slackjeff'"/>
+    <meta name="email" content="root@slackjeff.com.br"/>
+    <meta name="description" content="Aprenda a construir um gerenciador de pacotes para sistemas UNIX* Like"/>
+    <meta name="keywords" content="gerenciador de pacotes, linux, gnu, gerenciador"/>
+    <meta http-equiv="content-language" content="pt-br"/>
+    <meta name="copyright" content="© 2020 minuX"/>
+	  <meta charset="utf-8">
+    <link rel="shortcut icon" href="imgs/favicon.png" />
+    <link rel="stylesheet" type="text/css" href="css/style.css"/>
+</head>
+<body>
+
+           <!---------- CONTEUDO ---------->
+<img src='imgs/logo.png' class="logo">
+<nav id="menu">
+    <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="#">Perguntas frequentes</a></li>
+        <li><a href="https://github.com/DIY-Package-manager" target="_blank">Ajude a melhorar este livro</a></li>  
+        <li><a href="#">Coisas a se fazer</a></li> 
+    </ul>
+</nav>
+
+<hr>
+
+<h1>Prefácio</h1>
+<p>
+Eu sempre fui curioso em relação a coisas que me interessam, quando iniciei no mundo do GNU/Linux eu fiquei admirado com a facilidade de instalar programas. No inicio, rodando entre as distribuições Linux eu acabei que conhecendo vários tipos de gerenciadores de pacotes. Cada um com sua peculiaridade. Foi ai que me interessei em ler o código fonte de diversos gerenciadores e criar o meu próprio.
+</p>
+
+<p>
+No inicio foi um pouco penoso, quebrei o meu sistema operacional várias vezes por erros bobos. Mas com o tempo depois de criar pelo menos 4 gerenciadores de pacotes, resolvi passar adiante o meu conhecimento para quem deseja criar o seu próprio.<br>
+Temos vários DIY e HOWTOS de como criar distribuições Linux, mas é incrivel que não temos absolutamente <b>nenhum</b> tutorial de como criar um gerenciador. Temos muitos bons hackers espalhos pelo mundo mais parece que nenhum quer mostrar o seu conhecimento.
+</p>
+
+<p>
+Isso é triste, pois o que diferencia um distribuição da outra além dos softwares instalados e filosofia, é o gerenciador de pacotes.
+</p>
+
+<h2>O que você precisa?</h2>
+<p>
+Apesar deste livro abordar todo passo a passo de como construir seu próprio gerenciador de pacotes, você precisa ter uma noção de programação na linguagem shell script. Não existe melhor linguagem que não ser a do próprio UNIX* não é? Todas ferramentas normalmente já disponiveis no próprio S.O.
+Utilizaremos o sh, normalmente nas distribuições GNU/Linux é um link simbólico para o shell bash.
+</p>
+
+<p>
+No entanto você pode usar este livro para fazer em outra linguagem de programação, bastando apenas seguir a lógica utilizada.
+</p>
+
+<p>
+Uma nota importante é que criaremos um gerenciador de baixo nível! Ou seja, que não resolva dependências, já que este processo fica a cargo de um gerenciador de alto nível. Por enquanto não vamos abordar como se cria um gerenciador de alto nível ao estilo <b>apt</b>, <b>yum/dnf</b> e sim algo simples e parecido com <b>pkgtools</b>, <b>dpkg</b>, <b>rpm</b>.<br>
+</p>
+
+<p>
+Futuramente talvez abordamos sobre o assunto em novos níveis? Vamos ver, boa diversão!
+</p>
+
+<h2>Niveis</h2>
+<p>
+Para um melhor esclarecimento este livro é dividido por níveis, é de extrema importância você seguir os níveis para ter um gerenciador de pacotes bem elaborado e ter uma visão bem geral. 
+
+<ul>
+   <li><b><a href="na1/">Nível a1</a></b></li>
+      <p>
+      Este nível se concentra em criar as três ferramentas necessárias para ter um gerenciador de pacotes <i>funcional</i>! Mas ainda não servirá para ser utilizado no dia-dia, pois é extremamente sujeito a falhas de segurança e pode quebrar seu sistema.
+      </p>
+
+   <li><b>Nível a2</b></li>
+      <p>
+        Neste nível vamos fazer várias melhorias no gerenciador de pacotes e resolver as principais falhas que podem fazer seu sistema quebrar! Neste nível o seu gerenciador de pacotes já pode ser utilizado no dia-dia.
+      </p>
+
+    <li><b>Nível a3</b></li>
+      <p>
+        Este é o último nível básico do DPM. Aqui concentraremos principalmente nas falhas e deixaremos nosso gerenciador mais seguro possível.
+      </p>
+</ul>
+
+           <!---------- FOOTER  ---------->
+<footer>
+  <hr>
+<pre align="center">
+<b>© Copyright Jefferson 'Slackjeff' Rocha.</b>
+Se você for utilizar qualquer texto/script deste livro mantenha todos os créditos para o autor e DPM.
+</pre>
+</footer>
+
+</body>
+</html>

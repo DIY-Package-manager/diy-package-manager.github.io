@@ -1,0 +1,46 @@
+body{
+	margin: 2%;
+	font-family: courier new;
+}
+
+.logo{ 
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.code{
+	background-color: #f4f4f4;
+	padding: 2%;
+	border-style: dotted
+}
+
+.note{
+	background-color: #cbcbcb;
+	padding: 2%;
+	box-shadow: 2px 2px 2px 1px #9b9b9b;
+}
+
+
+#menu ul {
+    padding:0px;
+    margin:0px;
+    background-color:#EDEDED;
+    list-style:none;
+}
+#menu ul li { display: inline; }
+#menu ul li a {
+    padding: 10px 12px;
+    display: inline-block;
+
+    /* visual do link */
+    background-color:#EDEDED;
+    color: black;
+    text-decoration: none;
+    border-bottom:3px solid #EDEDED;
+}
+#menu ul li a:hover {
+    background-color:#D6D6D6;
+    color: #6D6D6D;
+    border-bottom:3px solid black;
+}
